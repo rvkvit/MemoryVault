@@ -21,7 +21,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(36), primary_key=True),
         sa.Column("recipient_id", sa.String(36), sa.ForeignKey("recipients.id", ondelete="CASCADE"), nullable=False, unique=True, index=True),
         sa.Column("token_hash", sa.String(64), nullable=False, unique=True, index=True),
-        sa.Column("is_activated", sa.Boolean, nullable=False, server_default="0"),
+        sa.Column("is_activated", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

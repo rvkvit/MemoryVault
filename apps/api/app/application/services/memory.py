@@ -3,15 +3,13 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
-import os
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-import asyncio
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cloudinary_client
 from app.core.config import settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.log import get_logger
@@ -19,11 +17,6 @@ from app.infrastructure.models.memory import MemoryEntry
 from app.infrastructure.repositories.memory import MemoryRepository
 
 logger = get_logger(__name__)
-
-
-def _write_bytes(path: str, data: bytes) -> None:
-    with open(path, "wb") as f:
-        f.write(data)
 
 _ALLOWED_AUDIO = {"audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"}
 _ALLOWED_IMAGE = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -52,10 +45,16 @@ class MemoryService:
         image_url = None
 
         if voice_file and voice_file.filename:
-            voice_url = await self._save_file(voice_file, "voices", _ALLOWED_AUDIO, _MAX_VOICE_MB)
+            voice_url = await self._upload_to_cloudinary(
+                voice_file, "memoryvault/voices", _ALLOWED_AUDIO, _MAX_VOICE_MB,
+                resource_type="video",  # Cloudinary classifies audio under "video"
+            )
 
         if image_file and image_file.filename:
-            image_url = await self._save_file(image_file, "memories", _ALLOWED_IMAGE, _MAX_IMAGE_MB)
+            image_url = await self._upload_to_cloudinary(
+                image_file, "memoryvault/memories", _ALLOWED_IMAGE, _MAX_IMAGE_MB,
+                resource_type="image",
+            )
 
         ip_hash = hashlib.sha256(client_ip.encode()).hexdigest() if client_ip else None
 
@@ -118,23 +117,27 @@ class MemoryService:
             ])
         return buf.getvalue()
 
-    async def _save_file(
-        self, upload: UploadFile, subfolder: str, allowed_types: set[str], max_mb: int
+    async def _upload_to_cloudinary(
+        self,
+        upload: UploadFile,
+        folder: str,
+        allowed_types: set[str],
+        max_mb: int,
+        *,
+        resource_type: str,
     ) -> str:
         content_type = (upload.content_type or "").lower()
         if content_type not in allowed_types:
             raise ValidationError(f"File type '{content_type}' is not allowed.")
 
         data = await upload.read()
-        if len(data) > max_mb * 1024 * 1024:
+        max_bytes = max_mb * 1024 * 1024
+        if len(data) > max_bytes:
             raise ValidationError(f"File exceeds {max_mb} MB limit.")
 
-        ext = os.path.splitext(upload.filename or "")[1] or ".bin"
-        filename = f"{uuid.uuid4()}{ext}"
-        save_dir = os.path.join(settings.UPLOAD_DIR, subfolder)
-        os.makedirs(save_dir, exist_ok=True)
-        path = os.path.join(save_dir, filename)
-
-        await asyncio.to_thread(_write_bytes, path, data)
-
-        return f"{settings.UPLOADS_BASE_URL}/{subfolder}/{filename}"
+        result = await cloudinary_client.upload(
+            data,
+            folder=folder,
+            resource_type=resource_type,
+        )
+        return result["secure_url"]

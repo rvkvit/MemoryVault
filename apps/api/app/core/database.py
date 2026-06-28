@@ -13,11 +13,15 @@ from app.core.log import get_logger
 
 logger = get_logger(__name__)
 
+_connect_args: dict = {}
+if settings.DATABASE_SSL:
+    # asyncpg does not honour sslmode in the URL; pass ssl via connect_args.
+    _connect_args["ssl"] = "require"
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.async_database_url,
     echo=settings.APP_DEBUG,
-    # SQLite-specific: allow the same connection to be used across threads
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
+    connect_args=_connect_args,
     pool_pre_ping=True,
 )
 
@@ -52,7 +56,7 @@ async def init_db() -> None:
             await conn.execute(text("SELECT 1"))
         logger.info(
             "Database connection established",
-            extra={"driver": settings.DATABASE_URL.split(":")[0]},
+            extra={"driver": settings.async_database_url.split(":")[0]},
         )
     except Exception as exc:
         logger.error("Database connection failed", extra={"error": str(exc)})

@@ -26,8 +26,8 @@ def upgrade() -> None:
         sa.Column("message", sa.Text, nullable=False),
         sa.Column("voice_url", sa.String(2048), nullable=True),
         sa.Column("image_url", sa.String(2048), nullable=True),
-        sa.Column("is_favourite", sa.Boolean, nullable=False, server_default="0"),
-        sa.Column("is_hidden", sa.Boolean, nullable=False, server_default="0"),
+        sa.Column("is_favourite", sa.Boolean, nullable=False, server_default=sa.text("false")),
+        sa.Column("is_hidden", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column("ip_hash", sa.String(64), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )

@@ -13,21 +13,10 @@ const nextConfig: NextConfig = {
 
   images: {
     remotePatterns: [
-      // Local development — backend serves uploads directly
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8000',
-        pathname: '/uploads/**',
-      },
-      // Production cloud storage
+      // Cloudinary CDN — all environments
       {
         protocol: 'https',
-        hostname: '**.blob.core.windows.net',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.azureedge.net',
+        hostname: 'res.cloudinary.com',
       },
     ],
     formats: ['image/avif', 'image/webp'],

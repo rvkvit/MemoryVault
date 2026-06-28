@@ -40,8 +40,17 @@ class Settings(BaseSettings):
     #   python -c "from passlib.hash import bcrypt; print(bcrypt.hash('yourpassword'))"
     ADMIN_PASSWORD_HASH: str = ""
 
-    # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./farewell.db"
+    # Database — Neon PostgreSQL (or any PostgreSQL-compatible URL).
+    # Paste the connection string from Neon as-is; the +asyncpg driver and
+    # SSL handling are applied automatically by async_database_url below.
+    DATABASE_URL: str = "postgresql+asyncpg://localhost/farewell"
+    # Set to true for Neon / any remote PostgreSQL that requires SSL.
+    DATABASE_SSL: bool = False
+
+    # Cloudinary — cloud storage for images, videos, and voice recordings.
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
 
     # Admin access
     ADMIN_EMAILS: str = ""
@@ -49,13 +58,32 @@ class Settings(BaseSettings):
     # CORS
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000"
 
-    # File uploads
-    UPLOAD_DIR: str = "./data/uploads"
-    UPLOADS_BASE_URL: str = "http://localhost:8000/uploads"
+    # File upload size limit (enforced before sending to Cloudinary)
     MAX_UPLOAD_SIZE_MB: int = 50
 
     # Logging
     LOG_LEVEL: str = "INFO"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def async_database_url(self) -> str:
+        """Return a postgresql+asyncpg:// URL, normalising common variants.
+
+        Neon connection strings start with postgres:// or postgresql:// and
+        contain ?sslmode=require. asyncpg does not parse sslmode from the URL;
+        we strip it here and honour DATABASE_SSL via connect_args instead.
+        """
+        url = self.DATABASE_URL
+        # Strip sslmode query parameter (asyncpg uses connect_args for SSL)
+        for token in ("?sslmode=require", "&sslmode=require",
+                      "?sslmode=verify-full", "&sslmode=verify-full"):
+            url = url.replace(token, "")
+        # Ensure the asyncpg driver prefix is present
+        if url.startswith("postgres://"):
+            url = "postgresql+asyncpg://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://") and "+asyncpg" not in url:
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
 
     @computed_field  # type: ignore[prop-decorator]
     @property

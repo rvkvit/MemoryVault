@@ -3,13 +3,10 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.staticfiles import StaticFiles
 
 from app.api.middleware.exception import ExceptionMiddleware, validation_exception_handler
 from app.api.middleware.logging import RequestLoggingMiddleware
@@ -81,11 +78,6 @@ def create_app() -> FastAPI:
 
     # ── Exception handlers ─────────────────────────────────────────────────────
     app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
-
-    # ── Static file serving for local uploads ─────────────────────────────────
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
     # ── Routers ────────────────────────────────────────────────────────────────
     app.include_router(v1_router)
