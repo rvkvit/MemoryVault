@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design token CSS custom properties ──────────────────────────────────────*/
+:root {
+  --color-space-black: #050810;
+  --color-deep-navy:   #080D1A;
+  --color-void-blue:   #0A1128;
+  --color-ms-blue:     #0078D4;
+  --color-teal:        #00D4B8;
+  --color-cyan:        #60EFFF;
+  --color-gold:        #F0B429;
+  --color-violet:      #8B7CF8;
+
+  --text-primary:   rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary:  rgba(255, 255, 255, 0.30);
+
+  --glass-fill:         rgba(255, 255, 255, 0.04);
+  --glass-fill-hover:   rgba(255, 255, 255, 0.07);
+  --glass-border:       rgba(255, 255, 255, 0.08);
+  --glass-border-lit:   rgba(255, 255, 255, 0.18);
+
+  --duration-micro:     150ms;
+  --duration-standard:  350ms;
+  --duration-medium:    600ms;
+  --duration-cinematic: 900ms;
+
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit:  cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-slide: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────────*/
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: #050810;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, sans-serif;
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+/* Mesh gradient background — three layered radial gradients */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 90%, rgba(0, 120, 212, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 50% at 90% 10%, rgba(0, 212, 184, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 50%, rgba(139, 124, 248, 0.04) 0%, transparent 70%);
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────────────────────*/
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.30);
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────────*/
+::selection {
+  background: rgba(0, 212, 184, 0.25);
+  color: rgba(255, 255, 255, 0.98);
+}
+
+/* ── Focus rings ─────────────────────────────────────────────────────────────*/
+:focus-visible {
+  outline: 2px solid #00D4B8;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Utilities ───────────────────────────────────────────────────────────────*/
+@layer utilities {
+  /* Glass surface */
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .glass-hover {
+    transition: background var(--duration-micro) ease,
+                border-color var(--duration-micro) ease;
+  }
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.72) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-teal {
+    background: linear-gradient(135deg, #00D4B8 0%, #0078D4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Accent line */
+  .accent-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #00D4B8 30%, #0078D4 70%, transparent 100%);
+    border-radius: 1px;
+  }
+
+  /* Shimmer skeleton */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    border-radius: 8px;
+  }
+
+  /* Relative z-index above the body::before mesh */
+  .above-mesh {
+    position: relative;
+    z-index: 1;
+  }
+}

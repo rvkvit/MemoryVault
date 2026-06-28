@@ -1,0 +1,57 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+# Never commit real secrets; commit only *.example files
+apps/api/.env
+apps/web/.env
+apps/web/.env.local
+apps/web/.env.production
+.env
+.env.local
+.env.production
+
+# ── Database ──────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Uploaded files ────────────────────────────────────────────────────────────
+apps/api/data/
+
+# ── Node / Next.js ───────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+tsconfig.tsbuildinfo
+
+# ── Alembic auto-generated env (not the migrations themselves) ────────────────
+# Keep alembic/versions/ — migrations should be in version control
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Pytest / coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
