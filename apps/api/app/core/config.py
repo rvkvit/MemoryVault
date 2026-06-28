@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     # Admin access
     ADMIN_EMAILS: str = ""
 
-    # CORS
-    CORS_ALLOWED_ORIGINS: str = "http://localhost:3000"
+    # CORS — defaults to FRONTEND_URL if not explicitly set (see cors_origins_list below)
+    CORS_ALLOWED_ORIGINS: str = ""
 
     # File upload size limit (enforced before sending to Cloudinary)
     MAX_UPLOAD_SIZE_MB: int = 50
@@ -93,7 +93,11 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
+        # If CORS_ALLOWED_ORIGINS is not set, allow FRONTEND_URL automatically.
+        # This means setting FRONTEND_URL alone is sufficient for a correct
+        # production deployment — no need to set a separate CORS variable.
+        raw = self.CORS_ALLOWED_ORIGINS or self.FRONTEND_URL
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     @field_validator("JWT_SECRET_KEY", "STATE_HMAC_SECRET")
     @classmethod

@@ -13,10 +13,14 @@ from app.core.log import get_logger
 
 logger = get_logger(__name__)
 
-_connect_args: dict = {}
-if settings.DATABASE_SSL:
-    # asyncpg does not honour sslmode in the URL; pass ssl via connect_args.
-    _connect_args["ssl"] = "require"
+# Determine whether SSL is needed.
+# Two sources of truth:
+#   1. DATABASE_SSL=true — explicit flag (used in render.yaml).
+#   2. The original DATABASE_URL containing ?sslmode=require — Neon default.
+# async_database_url already strips sslmode from the URL, so we must
+# re-apply it here via connect_args or asyncpg will connect without SSL.
+_ssl_required = settings.DATABASE_SSL or "sslmode=require" in settings.DATABASE_URL
+_connect_args: dict = {"ssl": "require"} if _ssl_required else {}
 
 engine = create_async_engine(
     settings.async_database_url,

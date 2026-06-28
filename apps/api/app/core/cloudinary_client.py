@@ -8,6 +8,7 @@ Configuration is applied once at module import time from app settings.
 from __future__ import annotations
 
 import asyncio
+import io
 from typing import Any
 
 import cloudinary
@@ -44,9 +45,11 @@ async def upload(
       bytes       — file size
       duration    — seconds (video/audio only)
     """
+    # Wrap in BytesIO — the Cloudinary SDK's upload() reliably accepts
+    # a file-like object but may not accept raw bytes across all versions.
     return await asyncio.to_thread(
         cloudinary.uploader.upload,
-        data,
+        io.BytesIO(data),
         folder=folder,
         resource_type=resource_type,
         **kwargs,

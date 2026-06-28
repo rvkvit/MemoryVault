@@ -47,10 +47,16 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    # Mirror the same SSL logic used in database.py so alembic upgrade head
+    # succeeds on Neon (which requires SSL) without a separate configuration.
+    ssl_required = settings.DATABASE_SSL or "sslmode=require" in settings.DATABASE_URL
+    connect_args: dict = {"ssl": "require"} if ssl_required else {}
+
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
