@@ -61,14 +61,13 @@ class Settings(BaseSettings):
     # File upload size limit (enforced before sending to Cloudinary)
     MAX_UPLOAD_SIZE_MB: int = 50
 
-    # Email / SMTP — set SMTP_HOST + SMTP_USER + SMTP_PASSWORD to enable emails.
-    # Works with Gmail (smtp.gmail.com:587) using an App Password.
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
+    # Email — powered by Resend (resend.com). SMTP is blocked on Render free tier.
+    # Sign up at resend.com → get an API key → verify a sending domain or email.
+    RESEND_API_KEY: str = ""
+    # The verified sender address (must match a domain/email verified in Resend)
+    EMAIL_FROM_ADDRESS: str = ""
     EMAIL_FROM_NAME: str = "MemoryVault"
-    # Where guestbook submission notifications are sent (defaults to SMTP_USER)
+    # Where guestbook submission notifications go (defaults to EMAIL_FROM_ADDRESS)
     NOTIFY_ADMIN_EMAIL: str = ""
 
     # Logging

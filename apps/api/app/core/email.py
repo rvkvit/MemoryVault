@@ -1,15 +1,15 @@
 """
-Email service — sends invitation and notification emails via SMTP.
+Email service — sends invitation and notification emails via Resend HTTP API.
 
-Designed to fail silently: if SMTP is not configured or the send fails,
+Render's free tier blocks outbound SMTP, so we use Resend (resend.com) which
+communicates over HTTPS and is never blocked.
+
+Designed to fail silently: if Resend is not configured or the send fails,
 a warning is logged but the HTTP response is never affected.
 """
 from __future__ import annotations
 
 import asyncio
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from app.core.config import settings
 from app.core.log import get_logger
@@ -18,22 +18,19 @@ logger = get_logger(__name__)
 
 
 def _is_configured() -> bool:
-    return bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD)
+    return bool(settings.RESEND_API_KEY and settings.EMAIL_FROM_ADDRESS)
 
 
 def _send(to_email: str, subject: str, html: str, plain: str) -> None:
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.SMTP_USER}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(plain, "plain", "utf-8"))
-    msg.attach(MIMEText(html, "html", "utf-8"))
-
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+    import resend  # lazy import — only loaded when email is actually configured
+    resend.api_key = settings.RESEND_API_KEY
+    resend.Emails.send({
+        "from": f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+        "text": plain,
+    })
 
 
 async def _send_async(to_email: str, subject: str, html: str, plain: str) -> None:
@@ -52,7 +49,7 @@ async def send_invitation_email(
     invite_url: str,
 ) -> None:
     if not _is_configured():
-        logger.warning("SMTP not configured — skipping invitation email")
+        logger.warning("Resend not configured — skipping invitation email")
         return
 
     subject = "You're invited — MemoryVault farewell page"
@@ -70,7 +67,7 @@ async def send_guestbook_notification(
     if not _is_configured():
         return
 
-    notify_to = settings.NOTIFY_ADMIN_EMAIL or settings.SMTP_USER
+    notify_to = settings.NOTIFY_ADMIN_EMAIL or settings.EMAIL_FROM_ADDRESS
     subject = f"{author_name} left a farewell message"
     html = _notification_html(author_name, message, reaction_emoji, page_slug)
     plain = _notification_plain(author_name, message, reaction_emoji, page_slug)
@@ -79,24 +76,21 @@ async def send_guestbook_notification(
 
 # ── Email templates ───────────────────────────────────────────────────────────
 
-_BASE_STYLE = """
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0c0e16; color: #e8eaf0; margin: 0; padding: 0;
-"""
-
-_CARD_STYLE = """
-  max-width: 560px; margin: 40px auto; background: #13162a;
-  border-radius: 16px; border: 1px solid rgba(255,255,255,0.08);
-  padding: 40px 36px; box-sizing: border-box;
-"""
-
-_BTN_STYLE = """
-  display: inline-block; background: #0078D4; color: #ffffff;
-  text-decoration: none; padding: 14px 32px; border-radius: 10px;
-  font-size: 15px; font-weight: 600; margin-top: 24px;
-"""
-
-_FOOTER_STYLE = "font-size:12px; color:rgba(255,255,255,0.3); margin-top:32px; text-align:center;"
+_BASE_STYLE = (
+    "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
+    "background:#0c0e16;color:#e8eaf0;margin:0;padding:0;"
+)
+_CARD_STYLE = (
+    "max-width:560px;margin:40px auto;background:#13162a;"
+    "border-radius:16px;border:1px solid rgba(255,255,255,0.08);"
+    "padding:40px 36px;box-sizing:border-box;"
+)
+_BTN_STYLE = (
+    "display:inline-block;background:#0078D4;color:#ffffff;"
+    "text-decoration:none;padding:14px 32px;border-radius:10px;"
+    "font-size:15px;font-weight:600;margin-top:24px;"
+)
+_FOOTER = "font-size:12px;color:rgba(255,255,255,0.3);margin-top:32px;text-align:center;"
 
 
 def _invitation_html(name: str, invite_url: str) -> str:
@@ -119,7 +113,7 @@ def _invitation_html(name: str, invite_url: str) -> str:
       If the button doesn't work, copy this URL:<br>
       <span style="word-break:break-all;">{invite_url}</span>
     </p>
-    <p style="{_FOOTER_STYLE}">MemoryVault &middot; Sent by your admin</p>
+    <p style="{_FOOTER}">MemoryVault &middot; Sent by your admin</p>
   </div>
 </body>
 </html>"""
@@ -136,9 +130,7 @@ def _invitation_plain(name: str, invite_url: str) -> str:
     )
 
 
-def _notification_html(
-    author: str, message: str, emoji: str | None, slug: str
-) -> str:
+def _notification_html(author: str, message: str, emoji: str | None, slug: str) -> str:
     emoji_line = f"<p style='font-size:28px;margin:0 0 8px;'>{emoji}</p>" if emoji else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -153,18 +145,14 @@ def _notification_html(
       {emoji_line}
       <p style="margin:0;line-height:1.7;color:rgba(255,255,255,0.85);">{message}</p>
     </div>
-    <p style="margin-top:16px;font-size:13px;color:rgba(255,255,255,0.4);">
-      — {author}
-    </p>
-    <p style="{_FOOTER_STYLE}">MemoryVault notification</p>
+    <p style="margin-top:16px;font-size:13px;color:rgba(255,255,255,0.4);">— {author}</p>
+    <p style="{_FOOTER}">MemoryVault notification</p>
   </div>
 </body>
 </html>"""
 
 
-def _notification_plain(
-    author: str, message: str, emoji: str | None, slug: str
-) -> str:
+def _notification_plain(author: str, message: str, emoji: str | None, slug: str) -> str:
     emoji_part = f"{emoji} " if emoji else ""
     return (
         f"New farewell message on page '{slug}'\n\n"

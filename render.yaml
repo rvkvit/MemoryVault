@@ -107,16 +107,11 @@ services:
       - key: MAX_UPLOAD_SIZE_MB
         value: "50"
 
-      # ── Email / SMTP — set all four in the dashboard to enable emails ─────────
-      # Use Gmail: SMTP_HOST=smtp.gmail.com, SMTP_PORT=587,
-      #            SMTP_USER=your@gmail.com, SMTP_PASSWORD=<App Password>
-      - key: SMTP_HOST
+      # ── Email — Resend HTTP API (resend.com, free tier 3000 emails/month) ──────
+      # Render blocks outbound SMTP so we use Resend's HTTPS API instead.
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
+      - key: EMAIL_FROM_ADDRESS
         sync: false
       - key: EMAIL_FROM_NAME
         value: "MemoryVault"
