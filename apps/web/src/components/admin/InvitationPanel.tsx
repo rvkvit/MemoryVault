@@ -50,7 +50,7 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const firstName = recipientName.split(' ')[0]
+  const firstName = recipientName.split(' ')[0] ?? recipientName
 
   const showToast = (message: string) => {
     setToast(message)
