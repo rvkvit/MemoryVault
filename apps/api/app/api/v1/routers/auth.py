@@ -45,7 +45,7 @@ _COOKIE_MAX_AGE = settings.JWT_ACCESS_TOKEN_EXPIRE_HOURS * 3600
     ),
 )
 async def admin_login(body: AdminLoginRequest, response: Response):
-    from passlib.hash import bcrypt  # lazy import — only used for admin auth
+    import bcrypt as _bcrypt
 
     email = body.email.lower().strip()
 
@@ -61,7 +61,10 @@ async def admin_login(body: AdminLoginRequest, response: Response):
         )
 
     try:
-        valid = bcrypt.verify(body.password, settings.ADMIN_PASSWORD_HASH)
+        valid = _bcrypt.checkpw(
+            body.password.encode("utf-8"),
+            settings.ADMIN_PASSWORD_HASH.encode("utf-8"),
+        )
     except Exception:
         valid = False
 

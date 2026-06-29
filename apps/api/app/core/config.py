@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # Invitation-based authentication
     INVITATION_TOKEN_EXPIRE_DAYS: int = 30
     # Generate admin password hash with:
-    #   python -c "from passlib.hash import bcrypt; print(bcrypt.hash('yourpassword'))"
+    #   python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
     ADMIN_PASSWORD_HASH: str = ""
 
     # Database — Neon PostgreSQL (or any PostgreSQL-compatible URL).
