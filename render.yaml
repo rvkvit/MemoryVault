@@ -49,11 +49,11 @@ services:
     rootDir: apps/api
     plan: free
 
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r apps/api/requirements.txt
 
-    # Run DB migrations then start the server.
-    # $PORT is injected by Render — must bind 0.0.0.0.
-    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # cd into the service root so alembic finds alembic.ini and uvicorn finds the app module.
+    # Explicit path is required because Render's Python runtime runs commands from the repo root.
+    startCommand: cd apps/api && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
     healthCheckPath: /health
 
@@ -115,8 +115,8 @@ services:
     rootDir: apps/web
     plan: free
 
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
+    buildCommand: cd apps/web && npm ci && npm run build
+    startCommand: cd apps/web && npm start
 
     envVars:
       - key: NODE_ENV
