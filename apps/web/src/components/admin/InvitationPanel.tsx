@@ -41,10 +41,8 @@ function buildOutlookHtml(firstName: string, inviteUrl: string): string {
 
 <p><em>Your invitation is private and intended only for you.</em></p>
 
-<p><strong>🔗 Your Personal Memory Vault</strong></p>
-
-<p style="margin:12px 0">
-  <a href="${inviteUrl}" style="color:#0078D4;font-weight:600;font-size:14px">${inviteUrl}</a>
+<p style="margin:16px 0">
+  <a href="${inviteUrl}" style="color:#0078D4;font-weight:700;font-size:15px;text-decoration:none">🔗 Your Personal Memory Vault</a>
 </p>
 
 <p>Thank you for being part of my journey. It has been a pleasure working with you, and I sincerely hope our paths cross again someday.</p>
