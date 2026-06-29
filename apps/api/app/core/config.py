@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     # File upload size limit (enforced before sending to Cloudinary)
     MAX_UPLOAD_SIZE_MB: int = 50
 
+    # Email / SMTP — set SMTP_HOST + SMTP_USER + SMTP_PASSWORD to enable emails.
+    # Works with Gmail (smtp.gmail.com:587) using an App Password.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM_NAME: str = "MemoryVault"
+    # Where guestbook submission notifications are sent (defaults to SMTP_USER)
+    NOTIFY_ADMIN_EMAIL: str = ""
+
     # Logging
     LOG_LEVEL: str = "INFO"
 
