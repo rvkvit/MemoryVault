@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Copy, Link2, RefreshCw, Smartphone, Trash2 } from 'lucide-react'
+import { Check, Copy, ExternalLink, Mail, RefreshCw, Smartphone, Zap } from 'lucide-react'
 import { GlassButton } from '@/components/ui/GlassButton'
 import { generateInvitation, getInvitationStatus, resetTrustedDevice } from '@/lib/api/admin'
 import type { InvitationStatus } from '@/types/farewell'
 
 interface InvitationPanelProps {
   recipientId: string
+  recipientName: string
   initialStatus: InvitationStatus | null
 }
 
@@ -16,12 +17,45 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function InvitationPanel({ recipientId, initialStatus }: InvitationPanelProps) {
+function buildOutlookEmail(firstName: string, inviteUrl: string): string {
+  return [
+    'Subject: A small personal request before I leave ❤️',
+    '',
+    `Hi ${firstName},`,
+    '',
+    'As I prepare for my final days at LähiTapiola, I wanted to ask something a little different.',
+    '',
+    'Rather than simply saying goodbye, I created a small private Memory Vault for the people who made this journey meaningful.',
+    '',
+    'I would be truly grateful if you could spend just a couple of minutes sharing a memory, a message, or anything you\'d like me to remember.',
+    '',
+    'Your invitation is private and only accessible using your personal link below.',
+    '',
+    inviteUrl,
+    '',
+    'Thank you for being part of my journey.',
+    '',
+    'Warm regards,',
+    '',
+    'Rovin Krishnia',
+    'Personal Email: rvk.vit@gmail.com',
+    'LinkedIn: https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/',
+  ].join('\n')
+}
+
+export function InvitationPanel({ recipientId, recipientName, initialStatus }: InvitationPanelProps) {
   const [status, setStatus] = useState<InvitationStatus | null>(initialStatus)
   const [newLink, setNewLink] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const firstName = recipientName.split(' ')[0]
+
+  const showToast = (message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 3000)
+  }
 
   const refresh = async () => {
     const s = await getInvitationStatus(recipientId)
@@ -36,18 +70,23 @@ export function InvitationPanel({ recipientId, initialStatus }: InvitationPanelP
       setNewLink(res.invite_url)
       await refresh()
     } catch {
-      setError('Failed to generate invitation.')
+      setError('Failed to generate invitation. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCopy = async () => {
-    const link = newLink
-    if (!link) return
-    await navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopyLink = async () => {
+    if (!newLink) return
+    await navigator.clipboard.writeText(newLink)
+    showToast('Invitation link copied.')
+  }
+
+  const handleCopyOutlookEmail = async () => {
+    if (!newLink) return
+    const emailText = buildOutlookEmail(firstName, newLink)
+    await navigator.clipboard.writeText(emailText)
+    showToast('Outlook email copied successfully.')
   }
 
   const handleResetDevice = async () => {
@@ -64,96 +103,139 @@ export function InvitationPanel({ recipientId, initialStatus }: InvitationPanelP
     }
   }
 
-  const statusColor = !status?.exists
-    ? 'text-[rgba(255,255,255,0.35)]'
-    : status.is_activated
-      ? 'text-emerald-400'
-      : 'text-amber-400'
-
-  const statusLabel = !status?.exists
-    ? 'No invitation generated'
-    : status.is_activated
-      ? 'Activated'
-      : 'Pending activation'
+  const hasInvitation = status?.exists ?? false
+  const isActivated = status?.is_activated ?? false
 
   return (
-    <div className="space-y-6">
-      {/* Status row */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="space-y-6 relative">
+
+      {/* ── Status bar ──────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-label-s text-[rgba(255,255,255,0.38)] uppercase tracking-wider mb-1">
-            Status
+          <p className="text-label-s text-[rgba(255,255,255,0.38)] uppercase tracking-wider mb-1.5">
+            Invitation Status
           </p>
-          <span className={`text-body-s font-medium ${statusColor}`}>
-            {statusLabel}
+          <span className={`text-body-s font-medium ${
+            !hasInvitation
+              ? 'text-[rgba(255,255,255,0.35)]'
+              : isActivated
+                ? 'text-emerald-400'
+                : 'text-amber-400'
+          }`}>
+            {!hasInvitation ? 'Not Generated' : isActivated ? 'Activated' : 'Pending Activation'}
           </span>
-          {status?.expires_at && (
+          {status?.created_at && (
             <p className="text-label-s text-[rgba(255,255,255,0.30)] mt-0.5">
-              Expires {formatDate(status.expires_at)}
+              Generated {formatDate(status.created_at)}
+              {status.expires_at ? ` · Expires ${formatDate(status.expires_at)}` : ''}
             </p>
           )}
         </div>
 
-        <div className="flex gap-2 flex-wrap">
+        {isActivated && (
           <GlassButton
             size="sm"
-            onClick={() => void handleGenerate()}
+            variant="ghost"
+            className="border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
+            onClick={() => void handleResetDevice()}
             disabled={loading}
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            {status?.exists ? 'Regenerate' : 'Generate'} Invitation
+            <Smartphone className="w-3.5 h-3.5" />
+            Reset Device
           </GlassButton>
-
-          {status?.is_activated && (
-            <GlassButton
-              size="sm"
-              variant="ghost"
-              className="border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
-              onClick={() => void handleResetDevice()}
-              disabled={loading}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              Reset Device
-            </GlassButton>
-          )}
-        </div>
+        )}
       </div>
 
+      {/* ── Error ────────────────────────────────────────────────────────── */}
       {error && (
         <div className="px-4 py-3 rounded-[10px] bg-red-500/08 border border-red-500/20 text-body-s text-red-400">
           {error}
         </div>
       )}
 
-      {/* New invitation link */}
-      {newLink && (
-        <div className="p-4 rounded-[12px] bg-ms-blue/05 border border-ms-blue/15 space-y-3">
-          <div className="flex items-center gap-2">
-            <Link2 className="w-4 h-4 text-ms-blue shrink-0" />
-            <p className="text-label-s text-ms-blue uppercase tracking-wider">
-              Invitation link generated
-            </p>
+      {/* ── Invitation card (shown after generation) ─────────────────────── */}
+      {newLink ? (
+        <div className="rounded-[14px] bg-gradient-to-br from-ms-blue/08 to-copilot-teal/04 border border-ms-blue/20 overflow-hidden">
+
+          {/* Card header */}
+          <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)]">
+            <Zap className="w-4 h-4 text-ms-blue shrink-0" />
+            <span className="text-label-s text-ms-blue uppercase tracking-wider font-medium">
+              Invitation Link Ready
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-label-s text-[rgba(255,255,255,0.65)] bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-3 py-2 overflow-x-auto whitespace-nowrap">
+
+          {/* URL display */}
+          <div className="px-5 pt-4 pb-3">
+            <code className="block w-full text-label-s text-[rgba(255,255,255,0.65)] bg-[rgba(0,0,0,0.20)] border border-[rgba(255,255,255,0.07)] rounded-[8px] px-4 py-3 overflow-x-auto whitespace-nowrap">
               {newLink}
             </code>
-            <GlassButton size="sm" onClick={() => void handleCopy()}>
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? 'Copied' : 'Copy'}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 px-5 pb-4 flex-wrap">
+            <a href={newLink} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
+              <GlassButton size="sm" variant="ghost">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open
+              </GlassButton>
+            </a>
+
+            <GlassButton size="sm" onClick={() => void handleCopyLink()}>
+              <Copy className="w-3.5 h-3.5" />
+              Copy Link
+            </GlassButton>
+
+            <GlassButton size="sm" variant="primary" onClick={() => void handleCopyOutlookEmail()}>
+              <Mail className="w-3.5 h-3.5" />
+              Copy Outlook Email
+            </GlassButton>
+
+            <GlassButton
+              size="sm"
+              variant="ghost"
+              onClick={() => void handleGenerate()}
+              disabled={loading}
+              className="ml-auto"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Regenerate
             </GlassButton>
           </div>
-          <p className="text-label-s text-[rgba(255,255,255,0.35)]">
-            Send this link to the recipient. It can only be opened once from a single device.
-            The link is only shown once — regenerate to get a new one.
+
+          <p className="px-5 pb-4 text-label-s text-[rgba(255,255,255,0.28)] leading-relaxed">
+            This link is unique to {firstName} and works on one device only.
+            Regenerating invalidates the current link — {firstName} would need the new one.
           </p>
+        </div>
+
+      ) : (
+        /* ── Pre-generation state ──────────────────────────────────────── */
+        <div className="rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-5 space-y-4">
+          <p className="text-body-s text-[rgba(255,255,255,0.45)] leading-relaxed">
+            {hasInvitation
+              ? `An invitation was previously generated for ${firstName}. Click below to regenerate — this creates a new link and invalidates the old one.`
+              : `No invitation has been generated yet. Click below to create a personal link for ${firstName}.`
+            }
+          </p>
+          <GlassButton
+            variant="primary"
+            onClick={() => void handleGenerate()}
+            disabled={loading}
+          >
+            {loading
+              ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              : <Zap className="w-3.5 h-3.5" />
+            }
+            {hasInvitation ? 'Regenerate Invitation' : 'Generate Invitation'}
+          </GlassButton>
         </div>
       )}
 
-      {/* Trusted device info */}
-      {status?.is_activated && status.device_first_visit && (
-        <div className="space-y-1">
-          <p className="text-label-s text-[rgba(255,255,255,0.38)] uppercase tracking-wider mb-2">
+      {/* ── Trusted device info ──────────────────────────────────────────── */}
+      {isActivated && status?.device_first_visit && (
+        <div className="space-y-2">
+          <p className="text-label-s text-[rgba(255,255,255,0.38)] uppercase tracking-wider">
             Trusted Device
           </p>
           <div className="grid grid-cols-2 gap-y-2 text-body-s">
@@ -172,6 +254,14 @@ export function InvitationPanel({ recipientId, initialStatus }: InvitationPanelP
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-[10px] bg-emerald-600 text-white text-body-s font-medium shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Check className="w-4 h-4 shrink-0" />
+          {toast}
         </div>
       )}
     </div>

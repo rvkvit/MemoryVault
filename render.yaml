@@ -107,16 +107,6 @@ services:
       - key: MAX_UPLOAD_SIZE_MB
         value: "50"
 
-      # ── Email — SendGrid HTTP API (sendgrid.com, free 100 emails/day) ──────────
-      # Render blocks outbound SMTP so we use SendGrid's HTTPS API via httpx.
-      - key: SENDGRID_API_KEY
-        sync: false
-      - key: EMAIL_FROM_ADDRESS
-        sync: false
-      - key: EMAIL_FROM_NAME
-        value: "MemoryVault"
-      - key: NOTIFY_ADMIN_EMAIL
-        sync: false
 
   # ── Next.js frontend ─────────────────────────────────────────────────────────
   - type: web

@@ -16,7 +16,6 @@ from app.api.v1.schemas.guestbook import (
 from app.application.services.guestbook import GuestbookService
 from app.core.config import settings
 from app.core.database import get_db
-from app.core import email as email_service
 
 router = APIRouter(prefix="/pages/{slug}/guestbook", tags=["Guestbook"])
 
@@ -79,13 +78,6 @@ async def create_entry(
         author_display_name=user["name"],
         author_avatar_url=None,  # Could be fetched from Microsoft Graph in a future iteration
         ip_hash=_hash_ip(request),
-    )
-
-    await email_service.send_guestbook_notification(
-        author_name=user["name"],
-        message=body.message,
-        reaction_emoji=body.reaction_emoji,
-        page_slug=slug,
     )
 
     return GuestbookEntryOut.model_validate(entry)

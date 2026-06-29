@@ -32,6 +32,7 @@ class InvitationToken(Base):
     activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    generation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     # No back_populates on Recipient to avoid modifying the existing model
     recipient: Mapped["Recipient"] = relationship("Recipient", lazy="selectin", foreign_keys=[recipient_id])

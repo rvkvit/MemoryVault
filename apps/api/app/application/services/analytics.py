@@ -16,6 +16,8 @@ from app.api.v1.schemas.analytics import (
     DeviceStat,
     RecipientAnalyticsRow,
 )
+from app.infrastructure.models.guestbook import GuestbookEntry
+from app.infrastructure.models.invitation import InvitationToken
 from app.infrastructure.models.page import Page
 from app.infrastructure.models.recipient import Recipient
 from app.infrastructure.models.visit_log import VisitLog
@@ -26,7 +28,16 @@ class AnalyticsService:
         self._session = session
 
     async def get_analytics(self) -> AnalyticsResponse:
-        # ── 1. Recipients + page stats (LEFT JOIN) ────────────────────────────
+        # ── 1. Recipients + page + invitation stats (LEFT JOIN) ───────────────
+        # Subquery: count guestbook entries per recipient (via their page)
+        guestbook_sq = (
+            select(func.count(GuestbookEntry.id))
+            .join(Page, GuestbookEntry.page_id == Page.id)
+            .where(Page.recipient_id == Recipient.id)
+            .correlate(Recipient)
+            .scalar_subquery()
+        )
+
         page_stmt = (
             select(
                 Recipient.id,
@@ -39,8 +50,13 @@ class AnalyticsService:
                 func.coalesce(Page.view_count, 0).label("view_count"),
                 func.coalesce(Page.is_published, False).label("is_published"),
                 Page.published_at,
+                func.coalesce(InvitationToken.generation_count, 0).label("invitation_generation_count"),
+                InvitationToken.created_at.label("invitation_generated_at"),
+                func.coalesce(InvitationToken.is_activated, False).label("invitation_is_activated"),
+                (guestbook_sq > 0).label("has_guestbook_entry"),
             )
             .outerjoin(Page, Page.recipient_id == Recipient.id)
+            .outerjoin(InvitationToken, InvitationToken.recipient_id == Recipient.id)
             .where(Recipient.is_active == True)  # noqa: E712
             .order_by(func.coalesce(Page.view_count, 0).desc(), Recipient.created_at.desc())
         )
@@ -120,6 +136,10 @@ class AnalyticsService:
                     first_visit=fv.isoformat() if fv else None,
                     last_visit=lv.isoformat() if lv else None,
                     avg_duration_seconds=vdata.get("avg_duration"),
+                    invitation_generation_count=int(row.invitation_generation_count),
+                    invitation_generated_at=row.invitation_generated_at.isoformat() if row.invitation_generated_at else None,
+                    invitation_is_activated=bool(row.invitation_is_activated),
+                    has_guestbook_entry=bool(row.has_guestbook_entry),
                 )
             )
 

@@ -122,6 +122,7 @@ export function RecipientDetailClient({ recipient, initialInvitation }: Recipien
         {tab === 'invitation' && (
           <InvitationPanel
             recipientId={current.id}
+            recipientName={current.display_name}
             initialStatus={initialInvitation ?? null}
           />
         )}

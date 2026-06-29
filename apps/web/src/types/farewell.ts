@@ -206,6 +206,12 @@ export interface RecipientAnalyticsRow {
   first_visit: string | null
   last_visit: string | null
   avg_duration_seconds: number | null
+  // Invitation
+  invitation_generation_count: number
+  invitation_generated_at: string | null
+  invitation_is_activated: boolean
+  // Guestbook
+  has_guestbook_entry: boolean
 }
 
 export interface BrowserStat  { browser: string; count: number }

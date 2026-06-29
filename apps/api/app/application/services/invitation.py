@@ -31,7 +31,9 @@ class InvitationService:
         Returns (invite_url, invitation).
         """
         existing = await self._inv_repo.get_by_recipient(recipient.id)
+        next_generation = 1
         if existing:
+            next_generation = existing.generation_count + 1
             # Remove the old invitation (and its trusted device via cascade)
             await self._inv_repo.delete(existing)
 
@@ -44,6 +46,7 @@ class InvitationService:
             activated_at=None,
             expires_at=now + timedelta(days=settings.INVITATION_TOKEN_EXPIRE_DAYS),
             created_at=now,
+            generation_count=next_generation,
         )
         await self._inv_repo.create(invitation)
         return self._invitation_url(raw_token), invitation

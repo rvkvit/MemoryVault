@@ -29,6 +29,12 @@ class RecipientAnalyticsRow(BaseModel):
     first_visit: Optional[str]     # ISO datetime
     last_visit: Optional[str]      # ISO datetime
     avg_duration_seconds: Optional[float]
+    # Invitation
+    invitation_generation_count: int = 0
+    invitation_generated_at: Optional[str] = None  # ISO datetime of last generation
+    invitation_is_activated: bool = False
+    # Guestbook
+    has_guestbook_entry: bool = False
 
 
 class BrowserStat(BaseModel):

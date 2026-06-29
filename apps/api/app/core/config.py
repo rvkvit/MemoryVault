@@ -61,17 +61,6 @@ class Settings(BaseSettings):
     # File upload size limit (enforced before sending to Cloudinary)
     MAX_UPLOAD_SIZE_MB: int = 50
 
-    # Email — powered by SendGrid HTTP API (sendgrid.com, free 100 emails/day).
-    # Render blocks outbound SMTP, so we call SendGrid's HTTPS API via httpx.
-    # Setup: sign up at sendgrid.com → Settings → Sender Authentication →
-    #        Single Sender Verification → verify your email address.
-    SENDGRID_API_KEY: str = ""
-    # The verified sender address (must be verified in SendGrid as a Single Sender)
-    EMAIL_FROM_ADDRESS: str = ""
-    EMAIL_FROM_NAME: str = "MemoryVault"
-    # Where guestbook submission notifications go (defaults to EMAIL_FROM_ADDRESS)
-    NOTIFY_ADMIN_EMAIL: str = ""
-
     # Logging
     LOG_LEVEL: str = "INFO"
 

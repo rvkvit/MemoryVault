@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Eye, Pencil, Search, Trash2, UserPlus } from 'lucide-react'
 import { GlassButton } from '@/components/ui/GlassButton'
-import { StatusBadge } from './StatusBadge'
 import { cn } from '@/lib/utils/cn'
 import type { RecipientAnalyticsRow } from '@/types/farewell'
 
@@ -12,6 +11,34 @@ interface RecipientTableProps {
   rows: RecipientAnalyticsRow[]
   loading?: boolean
   onDelete: (id: string, name: string) => void
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+type InvStatus = 'not_generated' | 'generated' | 'regenerated' | 'activated'
+
+function invitationStatus(row: RecipientAnalyticsRow): InvStatus {
+  if (row.invitation_generation_count === 0) return 'not_generated'
+  if (row.invitation_is_activated) return 'activated'
+  if (row.invitation_generation_count > 1) return 'regenerated'
+  return 'generated'
+}
+
+const INV_LABEL: Record<InvStatus, string> = {
+  not_generated: 'Not Generated',
+  generated: 'Generated',
+  regenerated: 'Regenerated',
+  activated: 'Activated',
+}
+
+const INV_STYLE: Record<InvStatus, string> = {
+  not_generated: 'text-[rgba(255,255,255,0.28)] bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.07)]',
+  generated:     'text-amber-400 bg-amber-500/08 border-amber-500/20',
+  regenerated:   'text-sky-400 bg-sky-500/08 border-sky-500/20',
+  activated:     'text-emerald-400 bg-emerald-500/08 border-emerald-500/20',
 }
 
 export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps) {
@@ -72,10 +99,10 @@ export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps)
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[rgba(255,255,255,0.05)]">
-                {['Colleague', 'Department', 'Last Day', 'Status', 'Views', ''].map((h) => (
+                {['Colleague', 'Invitation', 'Visits', 'Memory', ''].map((h) => (
                   <th
                     key={h}
                     className="px-5 py-3 text-left text-label-s text-[rgba(255,255,255,0.30)] font-normal uppercase tracking-wider whitespace-nowrap"
@@ -86,78 +113,92 @@ export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps)
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-[rgba(255,255,255,0.04)] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors group"
-                >
-                  {/* Name + email */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ms-blue/50 to-copilot-teal/50 flex items-center justify-center shrink-0 text-white text-xs font-semibold">
-                        {r.display_name.charAt(0).toUpperCase()}
+              {filtered.map((r) => {
+                const invStatus = invitationStatus(r)
+                return (
+                  <tr
+                    key={r.id}
+                    className="border-b border-[rgba(255,255,255,0.04)] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors group"
+                  >
+                    {/* Colleague: name + email */}
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ms-blue/50 to-copilot-teal/50 flex items-center justify-center shrink-0 text-white text-xs font-semibold">
+                          {r.display_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-body-s font-medium text-[rgba(255,255,255,0.85)] truncate max-w-[200px]">
+                            {r.display_name}
+                          </p>
+                          <p className="text-label-s text-[rgba(255,255,255,0.35)] truncate max-w-[200px]">
+                            {r.email}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-body-s font-medium text-[rgba(255,255,255,0.85)] truncate max-w-[180px]">
-                          {r.display_name}
+                    </td>
+
+                    {/* Invitation status + date */}
+                    <td className="px-5 py-3.5">
+                      <span className={cn(
+                        'inline-flex items-center px-2 py-0.5 rounded-[6px] text-label-s font-medium border',
+                        INV_STYLE[invStatus],
+                      )}>
+                        {INV_LABEL[invStatus]}
+                      </span>
+                      {r.invitation_generated_at && (
+                        <p className="text-label-s text-[rgba(255,255,255,0.28)] mt-0.5">
+                          {invStatus === 'regenerated' ? 'Last: ' : ''}
+                          {formatDate(r.invitation_generated_at)}
                         </p>
-                        <p className="text-label-s text-[rgba(255,255,255,0.35)] truncate max-w-[180px]">
-                          {r.email}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
+                      )}
+                    </td>
 
-                  <td className="px-5 py-3.5 text-body-s text-[rgba(255,255,255,0.42)] whitespace-nowrap">
-                    {r.department ?? '—'}
-                  </td>
+                    {/* Visits */}
+                    <td className="px-5 py-3.5 text-body-s text-[rgba(255,255,255,0.42)] tabular-nums whitespace-nowrap">
+                      {r.total_visits.toLocaleString()}
+                    </td>
 
-                  <td className="px-5 py-3.5 text-body-s text-[rgba(255,255,255,0.42)] whitespace-nowrap">
-                    {r.last_day
-                      ? new Date(r.last_day).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      : '—'}
-                  </td>
+                    {/* Memory submitted */}
+                    <td className="px-5 py-3.5">
+                      <span className={cn(
+                        'inline-flex items-center px-2 py-0.5 rounded-[6px] text-label-s font-medium border',
+                        r.has_guestbook_entry
+                          ? 'text-emerald-400 bg-emerald-500/08 border-emerald-500/20'
+                          : 'text-[rgba(255,255,255,0.28)] bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.07)]',
+                      )}>
+                        {r.has_guestbook_entry ? 'Yes' : 'No'}
+                      </span>
+                    </td>
 
-                  <td className="px-5 py-3.5">
-                    <StatusBadge published={r.is_published} active={r.is_active} />
-                  </td>
-
-                  <td className="px-5 py-3.5 text-body-s text-[rgba(255,255,255,0.42)] tabular-nums">
-                    {r.view_count.toLocaleString()}
-                  </td>
-
-                  {/* Row actions — visible on hover */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {r.is_published && (
-                        <Link href={`/to/${r.slug}`} target="_blank" rel="noopener">
-                          <GlassButton variant="ghost" size="sm" className="!px-2 !py-1.5" title="View page">
-                            <Eye className="w-3.5 h-3.5" />
+                    {/* Row actions — visible on hover */}
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {r.is_published && (
+                          <Link href={`/to/${r.slug}`} target="_blank" rel="noopener">
+                            <GlassButton variant="ghost" size="sm" className="!px-2 !py-1.5" title="View page">
+                              <Eye className="w-3.5 h-3.5" />
+                            </GlassButton>
+                          </Link>
+                        )}
+                        <Link href={`/admin/recipients/${r.id}`}>
+                          <GlassButton variant="ghost" size="sm" className="!px-2 !py-1.5" title="Edit">
+                            <Pencil className="w-3.5 h-3.5" />
                           </GlassButton>
                         </Link>
-                      )}
-                      <Link href={`/admin/recipients/${r.id}`}>
-                        <GlassButton variant="ghost" size="sm" className="!px-2 !py-1.5" title="Edit">
-                          <Pencil className="w-3.5 h-3.5" />
+                        <GlassButton
+                          variant="ghost"
+                          size="sm"
+                          className="!px-2 !py-1.5 text-red-400 hover:bg-red-500/10 hover:border-red-500/20"
+                          title="Delete"
+                          onClick={() => onDelete(r.id, r.display_name)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </GlassButton>
-                      </Link>
-                      <GlassButton
-                        variant="ghost"
-                        size="sm"
-                        className="!px-2 !py-1.5 text-red-400 hover:bg-red-500/10 hover:border-red-500/20"
-                        title="Delete"
-                        onClick={() => onDelete(r.id, r.display_name)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </GlassButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

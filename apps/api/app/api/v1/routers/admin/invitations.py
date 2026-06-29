@@ -12,9 +12,7 @@ from app.api.deps import require_admin
 from app.api.v1.schemas.invitation import GenerateInvitationResponse, InvitationStatus
 from app.application.services.invitation import InvitationService
 from app.application.services.recipient import RecipientService
-from app.core.config import settings
 from app.core.database import get_db
-from app.core import email as email_service
 
 router = APIRouter(
     prefix="/admin/invitations",
@@ -78,12 +76,6 @@ async def generate_invitation(
 
     service = InvitationService(db)
     invite_url, invitation = await service.generate(recipient)
-
-    await email_service.send_invitation_email(
-        to_email=recipient.email,
-        to_name=recipient.display_name,
-        invite_url=invite_url,
-    )
 
     return GenerateInvitationResponse(
         invite_url=invite_url,
