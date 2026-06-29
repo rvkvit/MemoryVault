@@ -114,7 +114,9 @@ services:
     rootDir: apps/web
     plan: free
 
-    buildCommand: npm ci && npm run build
+    # --include=dev is required: NODE_ENV=production causes npm ci to skip
+    # devDependencies by default, but Next.js needs typescript at build time.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
 
     envVars:
