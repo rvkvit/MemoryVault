@@ -107,9 +107,9 @@ services:
       - key: MAX_UPLOAD_SIZE_MB
         value: "50"
 
-      # ── Email — Resend HTTP API (resend.com, free tier 3000 emails/month) ──────
-      # Render blocks outbound SMTP so we use Resend's HTTPS API instead.
-      - key: RESEND_API_KEY
+      # ── Email — SendGrid HTTP API (sendgrid.com, free 100 emails/day) ──────────
+      # Render blocks outbound SMTP so we use SendGrid's HTTPS API via httpx.
+      - key: SENDGRID_API_KEY
         sync: false
       - key: EMAIL_FROM_ADDRESS
         sync: false

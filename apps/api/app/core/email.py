@@ -1,15 +1,16 @@
 """
-Email service — sends invitation and notification emails via Resend HTTP API.
+Email service — sends invitation and notification emails via SendGrid HTTP API.
 
-Render's free tier blocks outbound SMTP, so we use Resend (resend.com) which
-communicates over HTTPS and is never blocked.
+SendGrid supports Single Sender Verification (verify just an email address,
+no domain ownership required). Uses httpx which is already a dependency.
+Render's free tier blocks outbound SMTP, so HTTP API is the correct approach.
 
-Designed to fail silently: if Resend is not configured or the send fails,
+Fails silently: if SendGrid is not configured or the send fails,
 a warning is logged but the HTTP response is never affected.
 """
 from __future__ import annotations
 
-import asyncio
+import httpx
 
 from app.core.config import settings
 from app.core.log import get_logger
@@ -18,24 +19,30 @@ logger = get_logger(__name__)
 
 
 def _is_configured() -> bool:
-    return bool(settings.RESEND_API_KEY and settings.EMAIL_FROM_ADDRESS)
-
-
-def _send(to_email: str, subject: str, html: str, plain: str) -> None:
-    import resend  # lazy import — only loaded when email is actually configured
-    resend.api_key = settings.RESEND_API_KEY
-    resend.Emails.send({
-        "from": f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>",
-        "to": [to_email],
-        "subject": subject,
-        "html": html,
-        "text": plain,
-    })
+    return bool(settings.SENDGRID_API_KEY and settings.EMAIL_FROM_ADDRESS)
 
 
 async def _send_async(to_email: str, subject: str, html: str, plain: str) -> None:
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {
+            "email": settings.EMAIL_FROM_ADDRESS,
+            "name": settings.EMAIL_FROM_NAME,
+        },
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": plain},
+            {"type": "text/html", "value": html},
+        ],
+    }
     try:
-        await asyncio.to_thread(_send, to_email, subject, html, plain)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                headers={"Authorization": f"Bearer {settings.SENDGRID_API_KEY}"},
+                json=payload,
+            )
+            resp.raise_for_status()
         logger.info("Email sent", extra={"to": to_email, "subject": subject})
     except Exception as exc:
         logger.error("Failed to send email", extra={"to": to_email, "error": str(exc)})
@@ -49,7 +56,7 @@ async def send_invitation_email(
     invite_url: str,
 ) -> None:
     if not _is_configured():
-        logger.warning("Resend not configured — skipping invitation email")
+        logger.warning("SendGrid not configured — skipping invitation email")
         return
 
     subject = "You're invited — MemoryVault farewell page"

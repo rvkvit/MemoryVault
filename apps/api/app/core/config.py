@@ -61,10 +61,12 @@ class Settings(BaseSettings):
     # File upload size limit (enforced before sending to Cloudinary)
     MAX_UPLOAD_SIZE_MB: int = 50
 
-    # Email — powered by Resend (resend.com). SMTP is blocked on Render free tier.
-    # Sign up at resend.com → get an API key → verify a sending domain or email.
-    RESEND_API_KEY: str = ""
-    # The verified sender address (must match a domain/email verified in Resend)
+    # Email — powered by SendGrid HTTP API (sendgrid.com, free 100 emails/day).
+    # Render blocks outbound SMTP, so we call SendGrid's HTTPS API via httpx.
+    # Setup: sign up at sendgrid.com → Settings → Sender Authentication →
+    #        Single Sender Verification → verify your email address.
+    SENDGRID_API_KEY: str = ""
+    # The verified sender address (must be verified in SendGrid as a Single Sender)
     EMAIL_FROM_ADDRESS: str = ""
     EMAIL_FROM_NAME: str = "MemoryVault"
     # Where guestbook submission notifications go (defaults to EMAIL_FROM_ADDRESS)
