@@ -17,25 +17,73 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function buildOutlookEmail(firstName: string, inviteUrl: string): string {
+/** Convert the backend invite URL to a clean frontend /t/[token] URL. */
+function buildFrontendUrl(backendInviteUrl: string): string {
+  const token = backendInviteUrl.split('/').pop() ?? ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${origin}/t/${token}`
+}
+
+/** HTML version — renders with bold, links, and proper spacing when pasted into Outlook. */
+function buildOutlookHtml(firstName: string, inviteUrl: string): string {
+  return `
+<div style="font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.75;color:#1f1f1f;max-width:580px">
+
+<p>Hi <strong>${firstName}</strong>,</p>
+
+<p>As my journey at LähiTapiola comes to an end, I wanted to say goodbye in a way that felt a little more personal than a traditional farewell email.</p>
+
+<p>Over the years, I've had the privilege of working with many wonderful people, and you are someone who made this journey genuinely memorable.</p>
+
+<p>Instead of writing the same farewell message to everyone, I decided to build something different.</p>
+
+<p>I've created a private Memory Vault exclusively for you. Inside, you'll find a personal message that I wanted to leave with you before moving on to my next chapter.</p>
+
+<p><em>Your invitation is private and intended only for you.</em></p>
+
+<p><strong>🔗 Your Personal Memory Vault</strong></p>
+
+<p style="margin:12px 0">
+  <a href="${inviteUrl}" style="color:#0078D4;font-weight:600;font-size:14px">${inviteUrl}</a>
+</p>
+
+<p>Thank you for being part of my journey. It has been a pleasure working with you, and I sincerely hope our paths cross again someday.</p>
+
+<p>With gratitude,</p>
+
+<p>
+  <strong>Rovin Krishnia</strong><br>
+  Personal Email:&nbsp;<a href="mailto:rvk.vit@gmail.com" style="color:#0078D4">rvk.vit@gmail.com</a><br>
+  LinkedIn:&nbsp;<a href="https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/" style="color:#0078D4">linkedin.com/in/rovin-krishnia-a88a2b1a</a>
+</p>
+
+</div>`.trim()
+}
+
+/** Plain-text fallback for clients that don't accept HTML clipboard data. */
+function buildOutlookPlain(firstName: string, inviteUrl: string): string {
   return [
-    'Subject: A small personal request before I leave ❤️',
+    'Subject: Before I say goodbye...',
     '',
     `Hi ${firstName},`,
     '',
-    'As I prepare for my final days at LähiTapiola, I wanted to ask something a little different.',
+    'As my journey at LähiTapiola comes to an end, I wanted to say goodbye in a way that felt a little more personal than a traditional farewell email.',
     '',
-    'Rather than simply saying goodbye, I created a small private Memory Vault for the people who made this journey meaningful.',
+    'Over the years, I've had the privilege of working with many wonderful people, and you are someone who made this journey genuinely memorable.',
     '',
-    'I would be truly grateful if you could spend just a couple of minutes sharing a memory, a message, or anything you\'d like me to remember.',
+    'Instead of writing the same farewell message to everyone, I decided to build something different.',
     '',
-    'Your invitation is private and only accessible using your personal link below.',
+    'I've created a private Memory Vault exclusively for you. Inside, you'll find a personal message that I wanted to leave with you before moving on to my next chapter.',
+    '',
+    'Your invitation is private and intended only for you.',
+    '',
+    '🔗 Your Personal Memory Vault',
     '',
     inviteUrl,
     '',
-    'Thank you for being part of my journey.',
+    'Thank you for being part of my journey. It has been a pleasure working with you, and I sincerely hope our paths cross again someday.',
     '',
-    'Warm regards,',
+    'With gratitude,',
     '',
     'Rovin Krishnia',
     'Personal Email: rvk.vit@gmail.com',
@@ -78,15 +126,31 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
 
   const handleCopyLink = async () => {
     if (!newLink) return
-    await navigator.clipboard.writeText(newLink)
+    await navigator.clipboard.writeText(buildFrontendUrl(newLink))
     showToast('Invitation link copied.')
   }
 
   const handleCopyOutlookEmail = async () => {
     if (!newLink) return
-    const emailText = buildOutlookEmail(firstName, newLink)
-    await navigator.clipboard.writeText(emailText)
-    showToast('Outlook email copied successfully.')
+    const frontendUrl = buildFrontendUrl(newLink)
+    const html = buildOutlookHtml(firstName, frontendUrl)
+    const plain = buildOutlookPlain(firstName, frontendUrl)
+    try {
+      if (typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([plain], { type: 'text/plain' }),
+          }),
+        ])
+      } else {
+        await navigator.clipboard.writeText(plain)
+      }
+      showToast('Outlook email copied — paste directly into Outlook.')
+    } catch {
+      await navigator.clipboard.writeText(plain)
+      showToast('Email copied as plain text.')
+    }
   }
 
   const handleResetDevice = async () => {
@@ -105,6 +169,7 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
 
   const hasInvitation = status?.exists ?? false
   const isActivated = status?.is_activated ?? false
+  const frontendLink = newLink ? buildFrontendUrl(newLink) : null
 
   return (
     <div className="space-y-6 relative">
@@ -154,7 +219,7 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
       )}
 
       {/* ── Invitation card (shown after generation) ─────────────────────── */}
-      {newLink ? (
+      {frontendLink ? (
         <div className="rounded-[14px] bg-gradient-to-br from-ms-blue/08 to-copilot-teal/04 border border-ms-blue/20 overflow-hidden">
 
           {/* Card header */}
@@ -165,16 +230,16 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
             </span>
           </div>
 
-          {/* URL display */}
+          {/* URL display — shows the clean frontend URL */}
           <div className="px-5 pt-4 pb-3">
             <code className="block w-full text-label-s text-[rgba(255,255,255,0.65)] bg-[rgba(0,0,0,0.20)] border border-[rgba(255,255,255,0.07)] rounded-[8px] px-4 py-3 overflow-x-auto whitespace-nowrap">
-              {newLink}
+              {frontendLink}
             </code>
           </div>
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 px-5 pb-4 flex-wrap">
-            <a href={newLink} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
+            <a href={frontendLink} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
               <GlassButton size="sm" variant="ghost">
                 <ExternalLink className="w-3.5 h-3.5" />
                 Open
