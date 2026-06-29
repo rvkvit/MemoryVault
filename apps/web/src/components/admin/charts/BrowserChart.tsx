@@ -46,9 +46,9 @@ export function BrowserChart({ data }: BrowserChartProps) {
             color: 'rgba(255,255,255,0.85)',
             fontSize: 13,
           }}
-          formatter={(value: number, name: string) => [
-            `${value} (${Math.round((value / total) * 100)}%)`,
-            name,
+          formatter={(value, name) => [
+            `${Number(value)} (${Math.round((Number(value) / total) * 100)}%)`,
+            String(name),
           ]}
         />
         <Legend

@@ -61,8 +61,8 @@ export function VisitsChart({ data }: VisitsChartProps) {
             color: 'rgba(255,255,255,0.85)',
             fontSize: 13,
           }}
-          labelFormatter={formatDate}
-          formatter={(value: number) => [value, 'Visits']}
+          labelFormatter={(label) => formatDate(String(label))}
+          formatter={(value) => [Number(value), 'Visits'] as [number, string]}
           cursor={{ stroke: 'rgba(255,255,255,0.08)' }}
         />
         <Area
