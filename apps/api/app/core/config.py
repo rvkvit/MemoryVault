@@ -70,19 +70,27 @@ class Settings(BaseSettings):
         """Return a postgresql+asyncpg:// URL, normalising common variants.
 
         Neon connection strings start with postgres:// or postgresql:// and
-        contain ?sslmode=require. asyncpg does not parse sslmode from the URL;
-        we strip it here and honour DATABASE_SSL via connect_args instead.
+        contain libpq-style query params (sslmode, channel_binding) that
+        asyncpg does not understand and will concatenate onto the database
+        name. Strip them with proper URL parsing, not string replacement.
         """
+        from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
         url = self.DATABASE_URL
-        # Strip sslmode query parameter (asyncpg uses connect_args for SSL)
-        for token in ("?sslmode=require", "&sslmode=require",
-                      "?sslmode=verify-full", "&sslmode=verify-full"):
-            url = url.replace(token, "")
-        # Ensure the asyncpg driver prefix is present
+        # Normalise driver prefix first so urlparse sees a valid scheme.
         if url.startswith("postgres://"):
             url = "postgresql+asyncpg://" + url[len("postgres://"):]
         elif url.startswith("postgresql://") and "+asyncpg" not in url:
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        # Remove libpq-only query params that asyncpg does not support.
+        # Neon appends ?sslmode=require&channel_binding=require; stripping
+        # only sslmode leaves &channel_binding=require attached to the db name.
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query, keep_blank_values=True)
+        for key in ("sslmode", "channel_binding"):
+            params.pop(key, None)
+        url = urlunparse(parsed._replace(query=urlencode(params, doseq=True)))
         return url
 
     @computed_field  # type: ignore[prop-decorator]
