@@ -52,7 +52,8 @@ function buildOutlookHtml(firstName: string, inviteUrl: string): string {
 <p>
   <strong>Rovin Krishnia</strong><br>
   Personal Email:&nbsp;<a href="mailto:rvk.vit@gmail.com" style="color:#0078D4">rvk.vit@gmail.com</a><br>
-  LinkedIn:&nbsp;<a href="https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/" style="color:#0078D4">linkedin.com/in/rovin-krishnia-a88a2b1a</a>
+  LinkedIn:&nbsp;<a href="https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/" style="color:#0078D4">linkedin.com/in/rovin-krishnia-a88a2b1a</a><br>
+  Contact:&nbsp;+91 7387660007 (Available on WhatsApp)
 </p>
 
 </div>`.trim()
@@ -86,6 +87,7 @@ function buildOutlookPlain(firstName: string, inviteUrl: string): string {
     'Rovin Krishnia',
     'Personal Email: rvk.vit@gmail.com',
     'LinkedIn: https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/',
+    'Contact: +91 7387660007 (Available on WhatsApp)',
   ].join('\n')
 }
 
