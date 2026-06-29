@@ -9,7 +9,7 @@ const EMOJI_OPTIONS = ['❤️', '🎉', '🙏', '✨', '👏', '😢', '🚀', 
 const MAX_LENGTH = 500
 
 interface GuestbookFormProps {
-  onSubmit: (message: string, emoji?: string) => Promise<void>
+  onSubmit: (message: string, emoji?: string) => Promise<unknown>
   isPosting: boolean
   error: Error | null
 }
