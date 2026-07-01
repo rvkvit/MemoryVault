@@ -34,9 +34,9 @@ export function Footer({ recipientName, lastDay }: FooterProps) {
         </p>
 
         <div className="flex items-center justify-center gap-1.5 text-body-s text-[rgba(255,255,255,0.22)]">
-          <span>Made with</span>
+          <span>Created with gratitude</span>
           <Heart className="w-3.5 h-3.5 text-blush-rose fill-current" aria-label="love" />
-          <span>by their team</span>
+          <span>by Rovin Krishnia</span>
         </div>
       </div>
     </footer>
