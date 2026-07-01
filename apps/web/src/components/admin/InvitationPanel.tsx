@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Copy, ExternalLink, Mail, RefreshCw, Smartphone, Zap } from 'lucide-react'
 import { GlassButton } from '@/components/ui/GlassButton'
 import { generateInvitation, getInvitationStatus, resetTrustedDevice } from '@/lib/api/admin'
+import { buildFrontendUrl, buildOutlookHtml, buildOutlookPlain } from '@/lib/email-template'
+import { getStoredInviteUrl, storeInviteUrl } from '@/lib/invite-store'
 import type { InvitationStatus } from '@/types/farewell'
 
 interface InvitationPanelProps {
@@ -12,83 +14,9 @@ interface InvitationPanelProps {
   initialStatus: InvitationStatus | null
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-/** Convert the backend invite URL to a clean frontend /t/[token] URL. */
-function buildFrontendUrl(backendInviteUrl: string): string {
-  const token = backendInviteUrl.split('/').pop() ?? ''
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `${origin}/t/${token}`
-}
-
-/** HTML version — renders with bold, links, and proper spacing when pasted into Outlook. */
-function buildOutlookHtml(firstName: string, inviteUrl: string): string {
-  return `
-<div style="font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.75;color:#1f1f1f;max-width:580px">
-
-<p>Hi <strong>${firstName}</strong>,</p>
-
-<p>As my journey at LähiTapiola comes to an end, I wanted to say goodbye in a way that felt a little more personal than a traditional farewell email.</p>
-
-<p>Over the years, I've had the privilege of working with many wonderful people, and you are someone who made this journey genuinely memorable.</p>
-
-<p>Instead of writing the same farewell message to everyone, I decided to build something different.</p>
-
-<p>I've created a private Memory Vault exclusively for you. Inside, you'll find a personal message that I wanted to leave with you before moving on to my next chapter.</p>
-
-<p><em>Your invitation is private and intended only for you.</em></p>
-
-<p style="margin:16px 0">
-  <a href="${inviteUrl}" style="color:#0078D4;font-weight:700;font-size:15px;text-decoration:none">🔗 Your Personal Memory Vault</a>
-</p>
-
-<p>Thank you for being part of my journey. It has been a pleasure working with you, and I sincerely hope our paths cross again someday.</p>
-
-<p>With gratitude,</p>
-
-<p>
-  <strong>Rovin Krishnia</strong><br>
-  Personal Email:&nbsp;<a href="mailto:rvk.vit@gmail.com" style="color:#0078D4">rvk.vit@gmail.com</a><br>
-  LinkedIn:&nbsp;<a href="https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/" style="color:#0078D4">linkedin.com/in/rovin-krishnia-a88a2b1a</a><br>
-  Contact:&nbsp;+91 7387660007 (Available on WhatsApp)
-</p>
-
-</div>`.trim()
-}
-
-/** Plain-text fallback for clients that don't accept HTML clipboard data. */
-function buildOutlookPlain(firstName: string, inviteUrl: string): string {
-  return [
-    'Subject: Before I say goodbye...',
-    '',
-    `Hi ${firstName},`,
-    '',
-    'As my journey at LähiTapiola comes to an end, I wanted to say goodbye in a way that felt a little more personal than a traditional farewell email.',
-    '',
-    "Over the years, I've had the privilege of working with many wonderful people, and you are someone who made this journey genuinely memorable.",
-    '',
-    'Instead of writing the same farewell message to everyone, I decided to build something different.',
-    '',
-    "I've created a private Memory Vault exclusively for you. Inside, you'll find a personal message that I wanted to leave with you before moving on to my next chapter.",
-    '',
-    'Your invitation is private and intended only for you.',
-    '',
-    '🔗 Your Personal Memory Vault',
-    '',
-    inviteUrl,
-    '',
-    'Thank you for being part of my journey. It has been a pleasure working with you, and I sincerely hope our paths cross again someday.',
-    '',
-    'With gratitude,',
-    '',
-    'Rovin Krishnia',
-    'Personal Email: rvk.vit@gmail.com',
-    'LinkedIn: https://www.linkedin.com/in/rovin-krishnia-a88a2b1a/',
-    'Contact: +91 7387660007 (Available on WhatsApp)',
-  ].join('\n')
 }
 
 export function InvitationPanel({ recipientId, recipientName, initialStatus }: InvitationPanelProps) {
@@ -97,6 +25,12 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  // Restore previously generated URL from localStorage (backend never re-exposes it)
+  useEffect(() => {
+    const stored = getStoredInviteUrl(recipientId)
+    if (stored) setNewLink(stored)
+  }, [recipientId])
 
   const firstName = recipientName.split(' ')[0] ?? recipientName
 
@@ -115,6 +49,7 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
     setError(null)
     try {
       const res = await generateInvitation(recipientId)
+      storeInviteUrl(recipientId, res.invite_url)
       setNewLink(res.invite_url)
       await refresh()
     } catch {
@@ -168,8 +103,8 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
   }
 
   const hasInvitation = status?.exists ?? false
-  const isActivated = status?.is_activated ?? false
-  const frontendLink = newLink ? buildFrontendUrl(newLink) : null
+  const isActivated   = status?.is_activated ?? false
+  const frontendLink  = newLink ? buildFrontendUrl(newLink) : null
 
   return (
     <div className="space-y-6 relative">
@@ -191,8 +126,8 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
           </span>
           {status?.created_at && (
             <p className="text-label-s text-[rgba(255,255,255,0.30)] mt-0.5">
-              Generated {formatDate(status.created_at)}
-              {status.expires_at ? ` · Expires ${formatDate(status.expires_at)}` : ''}
+              Generated {formatDate(String(status.created_at))}
+              {status.expires_at ? ` · Expires ${formatDate(String(status.expires_at))}` : ''}
             </p>
           )}
         </div>
@@ -218,11 +153,10 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
         </div>
       )}
 
-      {/* ── Invitation card (shown after generation) ─────────────────────── */}
+      {/* ── Invitation card ───────────────────────────────────────────────── */}
       {frontendLink ? (
         <div className="rounded-[14px] bg-gradient-to-br from-ms-blue/08 to-copilot-teal/04 border border-ms-blue/20 overflow-hidden">
 
-          {/* Card header */}
           <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)]">
             <Zap className="w-4 h-4 text-ms-blue shrink-0" />
             <span className="text-label-s text-ms-blue uppercase tracking-wider font-medium">
@@ -230,14 +164,12 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
             </span>
           </div>
 
-          {/* URL display — shows the clean frontend URL */}
           <div className="px-5 pt-4 pb-3">
             <code className="block w-full text-label-s text-[rgba(255,255,255,0.65)] bg-[rgba(0,0,0,0.20)] border border-[rgba(255,255,255,0.07)] rounded-[8px] px-4 py-3 overflow-x-auto whitespace-nowrap">
               {frontendLink}
             </code>
           </div>
 
-          {/* Action buttons */}
           <div className="flex items-center gap-2 px-5 pb-4 flex-wrap">
             <a href={frontendLink} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
               <GlassButton size="sm" variant="ghost">
@@ -275,7 +207,6 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
         </div>
 
       ) : (
-        /* ── Pre-generation state ──────────────────────────────────────── */
         <div className="rounded-[14px] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.02)] p-5 space-y-4">
           <p className="text-body-s text-[rgba(255,255,255,0.45)] leading-relaxed">
             {hasInvitation
@@ -305,9 +236,9 @@ export function InvitationPanel({ recipientId, recipientName, initialStatus }: I
           </p>
           <div className="grid grid-cols-2 gap-y-2 text-body-s">
             <span className="text-[rgba(255,255,255,0.38)]">First seen</span>
-            <span className="text-[rgba(255,255,255,0.75)]">{formatDate(status.device_first_visit)}</span>
+            <span className="text-[rgba(255,255,255,0.75)]">{formatDate(String(status.device_first_visit))}</span>
             <span className="text-[rgba(255,255,255,0.38)]">Last seen</span>
-            <span className="text-[rgba(255,255,255,0.75)]">{formatDate(status.device_last_visit)}</span>
+            <span className="text-[rgba(255,255,255,0.75)]">{formatDate(String(status.device_last_visit))}</span>
             <span className="text-[rgba(255,255,255,0.38)]">Visit count</span>
             <span className="text-[rgba(255,255,255,0.75)]">{status.device_visit_count ?? '—'}</span>
             {status.device_browser && (

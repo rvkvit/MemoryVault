@@ -1,10 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Eye, Pencil, Search, Trash2, UserPlus } from 'lucide-react'
+import { Eye, Mail, Pencil, Search, Trash2, UserPlus } from 'lucide-react'
 import { GlassButton } from '@/components/ui/GlassButton'
 import { cn } from '@/lib/utils/cn'
+import { buildFrontendUrl, buildMailtoUrl } from '@/lib/email-template'
+import { getStoredInviteUrl } from '@/lib/invite-store'
 import type { RecipientAnalyticsRow } from '@/types/farewell'
 
 interface RecipientTableProps {
@@ -29,9 +31,9 @@ function invitationStatus(row: RecipientAnalyticsRow): InvStatus {
 
 const INV_LABEL: Record<InvStatus, string> = {
   not_generated: 'Not Generated',
-  generated: 'Generated',
-  regenerated: 'Regenerated',
-  activated: 'Activated',
+  generated:     'Generated',
+  regenerated:   'Regenerated',
+  activated:     'Activated',
 }
 
 const INV_STYLE: Record<InvStatus, string> = {
@@ -43,6 +45,25 @@ const INV_STYLE: Record<InvStatus, string> = {
 
 export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps) {
   const [query, setQuery] = useState('')
+
+  // Load stored invite URLs from localStorage after mount (avoids SSR hydration mismatch)
+  const [storedUrls, setStoredUrls] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const map: Record<string, string> = {}
+    for (const r of rows) {
+      const url = getStoredInviteUrl(r.id)
+      if (url) map[r.id] = url
+    }
+    setStoredUrls(map)
+  }, [rows])
+
+  const handleSendOutlook = (r: RecipientAnalyticsRow) => {
+    const backendUrl = storedUrls[r.id]
+    if (!backendUrl) return
+    const frontendUrl = buildFrontendUrl(backendUrl)
+    const firstName = r.display_name.split(' ')[0] ?? r.display_name
+    window.location.href = buildMailtoUrl(r.email, firstName, frontendUrl)
+  }
 
   const filtered = useMemo(() => {
     if (!query.trim()) return rows
@@ -115,12 +136,13 @@ export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps)
             <tbody>
               {filtered.map((r) => {
                 const invStatus = invitationStatus(r)
+                const hasStoredUrl = Boolean(storedUrls[r.id])
                 return (
                   <tr
                     key={r.id}
                     className="border-b border-[rgba(255,255,255,0.04)] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors group"
                   >
-                    {/* Colleague: name + email */}
+                    {/* Colleague */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ms-blue/50 to-copilot-teal/50 flex items-center justify-center shrink-0 text-white text-xs font-semibold">
@@ -170,9 +192,22 @@ export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps)
                       </span>
                     </td>
 
-                    {/* Row actions — visible on hover */}
+                    {/* Row actions */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Send via Outlook — only shown when a stored invite URL exists */}
+                        {hasStoredUrl && (
+                          <GlassButton
+                            variant="ghost"
+                            size="sm"
+                            className="!px-2 !py-1.5 text-ms-blue hover:bg-ms-blue/10 hover:border-ms-blue/30"
+                            title="Send invite via Outlook"
+                            onClick={() => handleSendOutlook(r)}
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </GlassButton>
+                        )}
+
                         {r.is_published && (
                           <Link href={`/to/${r.slug}`} target="_blank" rel="noopener">
                             <GlassButton variant="ghost" size="sm" className="!px-2 !py-1.5" title="View page">

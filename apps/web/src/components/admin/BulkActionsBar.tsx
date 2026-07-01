@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AlertCircle, Check, Globe, X, Zap } from 'lucide-react'
 import { GlassButton } from '@/components/ui/GlassButton'
 import { generateInvitation, publishPage } from '@/lib/api/admin'
+import { storeInviteUrl } from '@/lib/invite-store'
 import type { RecipientAnalyticsRow } from '@/types/farewell'
 
 interface BulkActionsBarProps {
@@ -38,8 +39,12 @@ export function BulkActionsBar({ rows, onComplete }: BulkActionsBarProps) {
     let failed = 0
     for (const r of targets) {
       try {
-        if (action === 'publish') await publishPage(r.id)
-        else await generateInvitation(r.id)
+        if (action === 'publish') {
+          await publishPage(r.id)
+        } else {
+          const result = await generateInvitation(r.id)
+          storeInviteUrl(r.id, result.invite_url)
+        }
       } catch {
         failed++
       }
