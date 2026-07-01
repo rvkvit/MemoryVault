@@ -2,21 +2,22 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { BulkActionsBar } from '@/components/admin/BulkActionsBar'
 import { RecipientTable } from '@/components/admin/RecipientTable'
 import { ConfirmModal } from '@/components/admin/ConfirmModal'
 import { useDeleteRecipient } from '@/hooks/useRecipients'
-import { useAnalytics } from '@/hooks/useAnalytics'
+import { useAnalytics, analyticsKeys } from '@/hooks/useAnalytics'
 import type { RecipientAnalyticsRow } from '@/types/farewell'
 
 interface DashboardClientProps {
-  /** Initial data from SSR; the client hydrates and keeps fresh via React Query. */
   initialRows: RecipientAnalyticsRow[]
 }
 
 export function DashboardClient({ initialRows }: DashboardClientProps) {
-  const router = useRouter()
+  const router      = useRouter()
+  const queryClient = useQueryClient()
 
-  // React Query keeps the table fresh after mutations without a full page reload
   const { data: analytics } = useAnalytics()
   const rows = analytics?.recipients ?? initialRows
 
@@ -35,8 +36,14 @@ export function DashboardClient({ initialRows }: DashboardClientProps) {
     })
   }
 
+  const handleBulkComplete = () => {
+    void queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
+  }
+
   return (
     <>
+      <BulkActionsBar rows={rows} onComplete={handleBulkComplete} />
+
       <RecipientTable
         rows={rows}
         loading={false}
