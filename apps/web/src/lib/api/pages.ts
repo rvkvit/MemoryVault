@@ -27,6 +27,27 @@ export async function fetchPageDataSSR(
   return { data, status: 200 }
 }
 
+// ── SSR current-user fetch (RSC) ─────────────────────────────────────────────
+
+export async function fetchCurrentUserSSR(
+  cookieHeader: string,
+): Promise<CurrentUser | null> {
+  const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000'
+  try {
+    const response = await fetch(`${backendUrl}/api/v1/auth/me`, {
+      headers: {
+        Cookie: cookieHeader,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    })
+    if (!response.ok) return null
+    return (await response.json()) as CurrentUser
+  } catch {
+    return null
+  }
+}
+
 // ── Client-side fetch (React Query) ──────────────────────────────────────────
 
 export async function fetchCurrentUser(): Promise<CurrentUser> {

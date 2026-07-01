@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { fetchPageDataSSR } from '@/lib/api/pages'
+import { fetchCurrentUserSSR, fetchPageDataSSR } from '@/lib/api/pages'
 import { FarewellPageClient } from '@/components/farewell/FarewellPageClient'
 import type { UserRole } from '@/types/farewell'
 
@@ -34,8 +34,11 @@ export default async function FarewellPage({ params }: Props) {
   const cookieStore = await cookies()
   const cookieHeader = buildCookieHeader(cookieStore)
 
-  // ── Fetch main page data ─────────────────────────────────────────────────
-  const { data, status } = await fetchPageDataSSR(slug, cookieHeader)
+  // ── Fetch main page data + current user (for form pre-fill) ────────────────
+  const [{ data, status }, currentUser] = await Promise.all([
+    fetchPageDataSSR(slug, cookieHeader),
+    fetchCurrentUserSSR(cookieHeader),
+  ])
 
   if (status === 401 || status === 302) {
     redirect('/denied?reason=invitation-required')
@@ -55,6 +58,8 @@ export default async function FarewellPage({ params }: Props) {
     <FarewellPageClient
       data={data}
       role={role}
+      currentUserName={currentUser?.name}
+      currentUserEmail={currentUser?.email}
     />
   )
 }

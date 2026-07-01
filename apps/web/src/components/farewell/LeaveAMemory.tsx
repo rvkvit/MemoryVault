@@ -17,12 +17,14 @@ const SAVING_STEPS = [
 
 interface LeaveAMemoryProps {
   slug: string
+  defaultName?: string
+  defaultEmail?: string
 }
 
-export function LeaveAMemory({ slug }: LeaveAMemoryProps) {
+export function LeaveAMemory({ slug, defaultName, defaultEmail }: LeaveAMemoryProps) {
   const [phase, setPhase] = useState<Phase>('form')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState(defaultName ?? '')
+  const [email, setEmail] = useState(defaultEmail ?? '')
   const [message, setMessage] = useState('')
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)

@@ -18,11 +18,15 @@ import type { FarewellPageData, UserRole } from '@/types/farewell'
 interface FarewellPageClientProps {
   data: FarewellPageData
   role: UserRole
+  currentUserName?: string
+  currentUserEmail?: string
 }
 
 export function FarewellPageClient({
   data,
   role,
+  currentUserName,
+  currentUserEmail,
 }: FarewellPageClientProps) {
   const [showLoader, setShowLoader] = useState(true)
   const { recipient, page } = data
@@ -78,7 +82,11 @@ export function FarewellPageClient({
               <VideoSection video={video} />
             )}
 
-            <LeaveAMemory slug={recipient.slug} />
+            <LeaveAMemory
+              slug={recipient.slug}
+              defaultName={currentUserName}
+              defaultEmail={currentUserEmail}
+            />
 
             <Footer
               recipientName={recipient.display_name}
