@@ -62,7 +62,16 @@ export function RecipientTable({ rows, loading, onDelete }: RecipientTableProps)
     if (!backendUrl) return
     const frontendUrl = buildFrontendUrl(backendUrl)
     const firstName = r.display_name.split(' ')[0] ?? r.display_name
-    window.location.href = buildMailtoUrl(r.email, firstName, frontendUrl)
+    const mailtoUrl = buildMailtoUrl(r.email, firstName, frontendUrl)
+    // Hidden anchor click is the most reliable way to trigger the OS mailto
+    // protocol handler (opens Outlook). window.location.href can be intercepted
+    // by browsers that have their own mailto handler configured (e.g. Gmail in Chrome).
+    const a = document.createElement('a')
+    a.href = mailtoUrl
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => document.body.removeChild(a), 100)
   }
 
   const filtered = useMemo(() => {
