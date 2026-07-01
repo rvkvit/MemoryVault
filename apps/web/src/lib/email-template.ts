@@ -43,8 +43,6 @@ export function buildOutlookHtml(firstName: string, inviteUrl: string): string {
 /** Plain-text fallback — used for mailto: links and non-HTML clipboard clients. */
 export function buildOutlookPlain(firstName: string, inviteUrl: string): string {
   return [
-    'Subject: Before I say goodbye...',
-    '',
     `Hi ${firstName},`,
     '',
     'As my journey at LähiTapiola comes to an end, I wanted to say goodbye in a way that felt a little more personal than a traditional farewell email.',

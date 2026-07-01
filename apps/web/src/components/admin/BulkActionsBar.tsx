@@ -22,8 +22,7 @@ export function BulkActionsBar({ rows, onComplete }: BulkActionsBarProps) {
   const [phase, setPhase]   = useState<Phase>('idle')
   const [progress, setProgress] = useState<Progress>({ done: 0, total: 0, failed: 0 })
 
-  const unpublished  = rows.filter(r => !r.is_published)
-  const noInvitation = rows.filter(r => r.invitation_generation_count === 0)
+  const unpublished = rows.filter(r => !r.is_published)
 
   const cancel = () => {
     setAction(null)
@@ -33,7 +32,7 @@ export function BulkActionsBar({ rows, onComplete }: BulkActionsBarProps) {
 
   const run = async () => {
     if (!action) return
-    const targets = action === 'publish' ? unpublished : noInvitation
+    const targets = action === 'publish' ? unpublished : rows
     setProgress({ done: 0, total: targets.length, failed: 0 })
     setPhase('running')
     let failed = 0
@@ -105,15 +104,15 @@ export function BulkActionsBar({ rows, onComplete }: BulkActionsBarProps) {
 
   // ── Confirm ───────────────────────────────────────────────────────────────────
   if (phase === 'confirm' && action) {
-    const targets = action === 'publish' ? unpublished : noInvitation
+    const targets = action === 'publish' ? unpublished : rows
     const isEmpty  = targets.length === 0
     const detail   = action === 'publish'
       ? isEmpty
         ? 'All pages are already published.'
         : `${targets.length} unpublished page${targets.length !== 1 ? 's' : ''} will be made live.`
       : isEmpty
-        ? 'All colleagues already have an invitation.'
-        : `Invitations will be generated for ${targets.length} colleague${targets.length !== 1 ? 's' : ''} who don't have one yet.`
+        ? 'No colleagues to process.'
+        : `Invitation links will be generated (or refreshed) for all ${targets.length} colleague${targets.length !== 1 ? 's' : ''}.`
 
     return (
       <div className="flex items-center justify-between gap-4 px-5 py-3 rounded-[12px] bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.07)] flex-wrap">
@@ -154,11 +153,11 @@ export function BulkActionsBar({ rows, onComplete }: BulkActionsBarProps) {
       <GlassButton
         size="sm"
         variant="ghost"
-        disabled={noInvitation.length === 0}
+        disabled={rows.length === 0}
         onClick={() => { setAction('invite'); setPhase('confirm') }}
       >
         <Zap className="w-3.5 h-3.5" />
-        Generate All Invitations{noInvitation.length > 0 ? ` (${noInvitation.length})` : ''}
+        Generate All Invitations ({rows.length})
       </GlassButton>
     </div>
   )
